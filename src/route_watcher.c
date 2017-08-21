@@ -4,11 +4,12 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include "common.h"
-#include "cfuhash.h"
+//#include "common.h"
+//#include "cfuhash.h"
 
 void *request_name();
-void add_to_pending_nreqs(char *dst_addr, char *requester_addr);
+void print_pnrs();
+void add_to_pnrs(char *dst_addr, char *requester_addr);
 char *msg;
 
 struct request_args {
@@ -16,10 +17,9 @@ struct request_args {
     char *dst_addr;
 };
 
-void *watch_routes(void *pnrs) {
-    //cfuhash_table_t *pnrs = (cfuhash_table_t *)hast_table;
-    sleep(5);
-    cfuhash_pretty_print(pnrs, stdout);
+void *watch_routes() {
+    //sleep(5);
+    //cfuhash_pretty_print(pnrs, stdout);
     FILE *in;
     extern FILE *popen();
     char buf[IP_MON_ROUTE_LEN];
@@ -49,9 +49,9 @@ void *watch_routes(void *pnrs) {
                     args.next_hop = next_hop;
                     args.dst_addr = dst_addr;
 
-                    // add request to PNRs
-                    add_to_pending_nreqs(dst_addr, "");
-
+                    // add new request to PNRs
+                    add_to_pnrs(dst_addr, NULL);
+                    print_pnrs();
                     // request name from next hop
                     pthread_create(&tid, NULL, request_name, (void*) &args);
                     asprintf(&msg, "*** Requesting name for %s...\n", dst_addr);
@@ -74,7 +74,7 @@ void *watch_routes(void *pnrs) {
 
 void *request_name(void *arguments) {
     struct request_args *args = (struct request_args *)arguments;
-    char *dst_addr = args->dst_addr, *next_hop_addr = (char*) args->next_hop;
+    char *dst_addr = args->dst_addr, *next_hop_addr = "127.0.0.1";//(char*) args->next_hop;
     int s;
     char res_buf[MAX_NAME_LEN];
     struct sockaddr_in next_hop;
@@ -92,7 +92,7 @@ void *request_name(void *arguments) {
     addr_size = sizeof next_hop;
     
     sendto(s, dst_addr, INET_ADDRSTRLEN, 0, (struct sockaddr *) &next_hop, addr_size);
-    memset(res_buf,'\0', MAX_NAME_LEN); // clear the buffer???????
+    memset(res_buf,'\0', MAX_NAME_LEN); // clear the buffer (?)
     recvfrom(s, res_buf, MAX_NAME_LEN, 0, (struct sockaddr *) &next_hop, &addr_size);
 
     asprintf(&msg, "*** Received name for host %s: %s\n", dst_addr, res_buf);
@@ -107,7 +107,44 @@ void *request_name(void *arguments) {
     // TODO: RESPOND TO PNRs <<<<<<<<<<<<<<<<<<<<<<<<
 
 }
+timer_t timer_id;
+timer_t timer_id2;
+void add_to_pnrs(char *dst_addr, char *requester_addr) {
+    // if a pending NREQ for dst_addr already exists in the PNRs table,
+    // add requester_addr to the associated requesters list
+    node_t *requesters_list;
+    if (0 && (requesters_list = cfuhash_get(pnrs, dst_addr)) != NULL) {
+        push(requesters_list, requester_addr);
+    } else {
+        // create new list of requesters for dst_addr
+        requesters_list = new_linked_list(requester_addr);
+        // associate dst_addr to requesters_list in PNRs table
+        cfuhash_put(pnrs, dst_addr, requesters_list);
 
-void add_to_pending_nreqs(char *dst_addr, char *requester_addr) {
-    ;
+        // create new timer
+        char *test = makeTimer(&timer_id, NRWQ_TIMEOUT_SECS);
+        // associate timer to dst_addr in timers table
+        //printf("_____%s_____\n", &timer_id);
+        cfuhash_put(timers, (char *)timer_id, strdup(dst_addr));
+        printf("~~~%s_\n", test);
+        printf("%zu timer entries\n", cfuhash_num_entries(timers));
+    }
+    printf("Added %s as a requester for %s in PNRs table\n", requester_addr, dst_addr);
+}
+
+void print_pnrs() {
+    size_t num_keys = 0;
+    void **keys = NULL;
+    char *key;
+    size_t i = 0;
+
+    keys = cfuhash_keys(pnrs, &num_keys, 1);
+
+    puts("{");
+    for (i = 0; i < num_keys; i++) {
+        key = keys[i];
+        printf("\t%s -> ", key);
+		print_list(cfuhash_get(pnrs, key));
+	}
+    puts("\n}");    
 }

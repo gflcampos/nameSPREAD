@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-//#include <string.h>
+#include "common.h"
 
-typedef struct node {
+/* typedef struct node {
     char* val;
     struct node *next;
-} node_t;
+} node_t; */
 
 void print_list(node_t *head) {
     node_t * current = head;

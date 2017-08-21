@@ -1,34 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include "nreq_responder.c"
-#include "route_watcher.c"
-#include "common.h"
-#include "logger.c"
 
 #include "libcfu/cfustring.c"
 #include "libcfu/cfuhash.c"
 #include "linked_list.c"
+#include "timer.c"
+#include "logger.c"
+#include "nreq_responder.c"
+#include "route_watcher.c"
+
+#include "common.h"
 
 char *own_addr;
+cfuhash_table_t *pnrs, *timers;
 
 int main(int argc, char *argv[]) {
     own_addr = argv[1];
     pthread_t tid1, tid2;
 
-    cfuhash_table_t *pnrs = cfuhash_new(30);
-	size_t i;
-	cfuhash_set_flag(pnrs, CFUHASH_FROZEN_UNTIL_GROWS);
+    pnrs = cfuhash_new(30);
+    timers = cfuhash_new(30);
+    cfuhash_set_flag(pnrs, CFUHASH_FROZEN_UNTIL_GROWS);
+    cfuhash_set_flag(timers, CFUHASH_FROZEN_UNTIL_GROWS);
+	/* size_t i;
     for (i = 1; i <= 10; i++) {
         char key[16];
         node_t *value = new_linked_list("10.0.0.7");
         push(value, "10.0.0.42");
         sprintf(key, "10.0.0.%zu", i);
         cfuhash_put(pnrs, key, value);
-    }
+    } */
     
-    pthread_create(&tid1, NULL, listen_for_nreqs, (void *) pnrs);
-    pthread_create(&tid2, NULL, watch_routes, (void *) pnrs);
+    pthread_create(&tid1, NULL, listen_for_nreqs, NULL);
+    pthread_create(&tid2, NULL, watch_routes, NULL);
 
     pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
@@ -43,8 +48,9 @@ char *get_hostname() {
         perror("### Could not open /etc/hostname");
 
     hostname = fgets(buff, sizeof(buff), file_stream);
+    hostname[strlen(hostname) - 1] = '\0'; // remove trailing newline
     fclose(file_stream);
-
+    
     return strdup(hostname);
 }
 

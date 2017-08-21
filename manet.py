@@ -96,7 +96,7 @@ def topology():
         net.stations[i-1].cmd(hostsCmd)
 
         hostnameFile = open("%s/.hostname-sta%d" % (hostsFilePath, i), "w")
-        hostnameFile.write("sta%d" % i)
+        hostnameFile.write("sta%d\n" % i)
         hostnameCmd = "mount --bind %s/.hostname-sta%d /etc/hostname" % (hostsFilePath, i)
         print("\t" + hostnameCmd)
         net.stations[i-1].cmd(hostnameCmd)

@@ -4,15 +4,14 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <stdlib.h>
-#include "common.h"
-#include "cfuhash.h"
+//#include "common.h"
+//#include "cfuhash.h"
 
 char *msg;
 
-void *listen_for_nreqs(void *pnrs) {
-    //cfuhash_table_t *pnrs = (cfuhash_table_t *)hast_table;
-    cfuhash_put(pnrs, "hello", "world");
-    cfuhash_pretty_print(pnrs, stdout);
+void *listen_for_nreqs() {
+    //cfuhash_put(pnrs, "hello", "world");
+    //cfuhash_pretty_print(pnrs, stdout);
     const char *hostname = get_hostname();
     struct sockaddr_in self, requester;
     int s, requester_size = sizeof requester, conn_fd;

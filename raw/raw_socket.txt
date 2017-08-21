@@ -1,0 +1,22 @@
+IP_ROUTER_ALERT (since Linux 2.2)
+Pass all to-be forwarded packets with the IP Router Alert option set to this socket. Only valid for raw sockets. This is useful, for instance, for user-space RSVP daemons. The tapped packets are not forwarded by the kernel; it is the user's responsibility to send them out again. Socket binding is ignored, such packets are only filtered by protocol. Expects an integer flag.
+http://man7.org/linux/man-pages/man7/ip.7.html
+Conclusions:
+- must use raw sockets
+- intermediate nodes must have a raw socket that has 'subscribed' to packets whose IP header includes the Router Alert option. This is done using setsockopt:
+setsockopt(raw_socket, IPPROTO_IP, IP_ROUTER_ALERT, &router_alert_opt_val, sizeof(router_alert_opt_val))
+
+Sending a packet through a raw socket:
+The IP Router Alert option must be inserted in the IP header. To allow crafting of IP header in user space, the 
+IP_HDRINCL option must be set on the socket:
+setsockopt(raw_socket, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on))
+This tells the kernel not to generate an IP header because packets sent with this socket will already have it.
+
+Note: if a socket is created using IPPROTO_RAW as the protocol (socket(AF_INET, SOCK_RAW, IPPROTO_RAW)), the IP_HDRINCL option is assumed to be on.
+http://man7.org/linux/man-pages/man7/raw.7.html
+
+Receiving a packet through a raw socket:
+"An IPPROTO_RAW socket is send only." (http://man7.org/linux/man-pages/man7/raw.7.html) => must use IP as the protocol for the raw socket that is going to receive the packet:
+socket(AF_INET, SOCK_RAW, 4); // 4 = IPv4
+
+

@@ -14,6 +14,8 @@
 
 char *own_addr;
 cfuhash_table_t *pnrs, *timers;
+int timer_ids[N_TIMERS] = {0};
+int n_timers = 0;
 
 int main(int argc, char *argv[]) {
     own_addr = argv[1];
@@ -32,10 +34,10 @@ int main(int argc, char *argv[]) {
         cfuhash_put(pnrs, key, value);
     } */
     
-    pthread_create(&tid1, NULL, listen_for_nreqs, NULL);
+    //pthread_create(&tid1, NULL, listen_for_nreqs, NULL);
     pthread_create(&tid2, NULL, watch_routes, NULL);
 
-    pthread_join(tid1, NULL);
+    //pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
 }
 
@@ -81,5 +83,17 @@ char *get_name_by_addr(char *address) {
         }
     }
 
+    return NULL;
+}
+
+int *next_free_timer_id() {
+    int i;
+
+    for (i = 0; i < N_TIMERS; i++) {
+        if (timer_ids[i] == 0) {
+            timer_ids[i] = i + 1;
+            return &(timer_ids[i]);
+        }
+    }
     return NULL;
 }

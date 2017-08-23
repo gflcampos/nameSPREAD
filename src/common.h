@@ -8,7 +8,7 @@
 #define IP_MON_ROUTE_LEN 1024
 #define INET_ADDRSTRLEN 16
 #define MAX_NAME_LEN 32
-#define NRWQ_TIMEOUT_SECS 3
+#define NREQ_TIMEOUT_SECS 3
 #define N_TIMERS 100
 
 extern char *own_addr;
@@ -23,7 +23,7 @@ void log_msg(char *message, char *addr);
 char *get_timestamp();
 
 // timer
-void makeTimer(timer_t *timerID, int *timer_id, int expire);
+void make_timer(timer_t *timer_obj, int *timer_id, int timeout_secs);
 
 // linked list
 typedef struct node {

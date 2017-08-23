@@ -30,17 +30,30 @@ void *listen_for_nreqs() {
     log_msg(msg, own_addr);
 
     while (1) {
+        char *requester_addr;
+        char *name;
+
         recvfrom(s, req_buf, INET_ADDRSTRLEN, 0, (struct sockaddr *) &requester, &requester_size);
+        requester_addr = inet_ntoa(requester.sin_addr);
 
-        asprintf(&msg, "### NREQ: %s wants name for %s\n", inet_ntoa(requester.sin_addr), req_buf);
+        asprintf(&msg, "### NREQ: %s wants name for %s\n", requester_addr, req_buf);
         log_msg(msg, own_addr);
 
-        // TODO: name is cached ? respond : in PNRs? <<<<<<<<<<<<<<<<<<<<<<<<
-        strcpy(res_buf, hostname);
-        sendto(s, res_buf, MAX_NAME_LEN, 0, (struct sockaddr*) &requester, requester_size);
+        name = get_name_by_addr(req_buf);
 
-        asprintf(&msg, "### Sent name %s to %s\n", hostname, inet_ntoa(requester.sin_addr));
-        log_msg(msg, own_addr);
+        if (name) { // is the name cached?
+            strcpy(res_buf, name);
+            sendto(s, res_buf, MAX_NAME_LEN, 0, (struct sockaddr*) &requester, requester_size);
+
+            asprintf(&msg, "### Sent name %s to %s\n", name, requester_addr);
+            log_msg(msg, own_addr);
+        } else {
+            // if name is not cached, then a PNR for that name must already exist in PNRs table
+            // so, add requester_addr to the list of requesters of that PNR
+            register_nreq(req_buf, requester_addr);
+            // when available, the response will be sent. If a timeout occurs, 
+            // then a timeout notification will be sent instead (by the timeout handler function)
+        }       
 
         // clear stdout and buffers
         fflush(stdout);

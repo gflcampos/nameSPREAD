@@ -25,19 +25,11 @@ int main(int argc, char *argv[]) {
     timers = cfuhash_new(30);
     cfuhash_set_flag(pnrs, CFUHASH_FROZEN_UNTIL_GROWS);
     cfuhash_set_flag(timers, CFUHASH_FROZEN_UNTIL_GROWS);
-	/* size_t i;
-    for (i = 1; i <= 10; i++) {
-        char key[16];
-        node_t *value = new_linked_list("10.0.0.7");
-        push(value, "10.0.0.42");
-        sprintf(key, "10.0.0.%zu", i);
-        cfuhash_put(pnrs, key, value);
-    } */
     
-    //pthread_create(&tid1, NULL, listen_for_nreqs, NULL);
+    pthread_create(&tid1, NULL, listen_for_nreqs, NULL);
     pthread_create(&tid2, NULL, watch_routes, NULL);
 
-    //pthread_join(tid1, NULL);
+    pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
 }
 

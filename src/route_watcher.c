@@ -8,11 +8,12 @@
 //#include "cfuhash.h"
 
 void *request_name();
-void print_pnrs();
-void print_timers();
-void add_to_pnrs(char *dst_addr, char *requester_addr);
-char *msg;
+void print_hash_table(cfuhash_table_t *table);
+/* void print_pnrs();
+void print_timers(); */
+void register_nreq(char *dst_addr, char *requester_addr);
 
+char *msg;
 struct request_args {
     char *next_hop;
     char *dst_addr;
@@ -36,7 +37,7 @@ void *watch_routes() {
         strcpy(route_copy, buf);
 
         if (strstr(buf, "via")) {
-            if (!strstr(buf, "Deleted")) { // route was added
+            if (!strstr(buf, "Deleted")) { // new route detected
                 dst_addr = strtok(buf, " ");
                 strtok(NULL, " "); // skip 'via'
                 next_hop = strtok(NULL, " ");
@@ -50,11 +51,11 @@ void *watch_routes() {
                     args.next_hop = next_hop;
                     args.dst_addr = dst_addr;
 
-                    // add new request to PNRs
-                    add_to_pnrs(dst_addr, NULL);
-                    print_pnrs();
-                    puts("add_to_pnrs done!");
-                    // request name from next hop
+                    // register the request in PNRs table
+                    register_nreq(dst_addr, NULL);
+                    print_hash_table(pnrs);
+                    
+                    // request name from next hop in new thread
                     pthread_create(&tid, NULL, request_name, (void*) &args);
                     asprintf(&msg, "*** Requesting name for %s...\n", dst_addr);
                     log_msg(msg, own_addr);
@@ -63,7 +64,7 @@ void *watch_routes() {
                     asprintf(&msg, "*** A name for host %s is already cached: %s\n", dst_addr, name);
                     log_msg(msg, own_addr);
                 }
-            } else { //route was deleted
+            } else { // route deletion detected
                 strtok(buf, " ");
                 dst_addr = strtok(NULL, " ");
                 asprintf(&msg, "*** Route removed: %s", route_copy);
@@ -106,19 +107,27 @@ void *request_name(void *arguments) {
     fclose(out);
     puts("HELLO5");
 
-    // TODO: RESPOND TO PNRs <<<<<<<<<<<<<<<<<<<<<<<<
-
+    // TODO: send name to interested requesters, if any <<<<<<<<<<<<<<<<<<<<<<<<
 }
 
-void add_to_pnrs(char *dst_addr, char *requester_addr) {
-    // if a pending NREQ for dst_addr already exists in the PNRs table,
-    // add requester_addr to the associated requesters list
+/*
+If a pending NREQ for dst_addr already exists in the PNRs table,
+add requester_addr to the associated requesters list.
+Otherwise, create a new pair in PNRs table assoviating dst_addr
+with a new list of requesters that includes requester_addr.
+*/
+void register_nreq(char *dst_addr, char *requester_addr) {
     node_t *requesters_list;
-    if (0&&(requesters_list = cfuhash_get(pnrs, dst_addr)) != NULL) {
-        puts("BBB");
+
+    if ((requesters_list = cfuhash_get(pnrs, dst_addr)) != NULL) {
         push(requesters_list, requester_addr);
-        puts("BBB2");
     } else {
+
+        if (requester_addr != NULL) {
+            asprintf(&msg, "[FIX THIS] ### New PNR for %s (from %s) created but NREQ was not sent!\n", dst_addr, requester_addr);
+            log_msg(msg, own_addr);
+        }
+
         // create new list of requesters for dst_addr
         requesters_list = new_linked_list(requester_addr);
         // associate dst_addr to requesters_list in PNRs table
@@ -127,22 +136,46 @@ void add_to_pnrs(char *dst_addr, char *requester_addr) {
         // create new timer
         timer_t timer_obj;
         int *timer_id_index = next_free_timer_id();
-        printf("~~~new timer_id=%d\n", *timer_id_index);
         char timer_id_str[12];
+        //printf("~~~new timer_id=%d\n", *timer_id_index);
+        make_timer(&timer_obj, &(timer_ids[*timer_id_index - 1]), NREQ_TIMEOUT_SECS);
+        
+        // associate timer_id (as string) to dst_addr in timers table
         sprintf(timer_id_str, "%d", *timer_id_index);
-        puts("BBB3");
-        makeTimer(&timer_obj, &(timer_ids[*timer_id_index - 1]), NRWQ_TIMEOUT_SECS);
-        puts("BBB4");
-        // associate timer to dst_addr in timers table
         cfuhash_put(timers, timer_id_str, strdup(dst_addr));
-        printf("Added %s as the dst_addr for timer %d in timers table\n", dst_addr, *timer_id_index);
-        printf("%zu timer entries\n", cfuhash_num_entries(timers));
-        print_timers();
+        printf("*** Started timer %d for NREQ of %s\n", *timer_id_index, dst_addr);
+        asprintf(&msg, "*** Started timer %d for NREQ of %s\n", *timer_id_index, dst_addr);
+        log_msg(msg, own_addr);
+        //printf("%zu timer entries\n", cfuhash_num_entries(timers));
+        print_hash_table(timers);
     }
-    printf("Added %s as a requester for %s in PNRs table\n", requester_addr, dst_addr);
+    printf("*** Added %s as a requester for %s in PNRs table\n", requester_addr, dst_addr);
+    asprintf(&msg, "*** Added %s as a requester for %s in PNRs table\n", requester_addr, dst_addr);
+    log_msg(msg, own_addr);
 }
 
-void print_pnrs() {
+void print_hash_table(cfuhash_table_t *table) {
+    size_t num_keys = 0;
+    void **keys = NULL;
+    char *key;
+    size_t i = 0;
+
+    keys = cfuhash_keys(table, &num_keys, 1);
+
+    puts("{");
+    for (i = 0; i < num_keys; i++) {
+        key = keys[i];
+        printf("\t%s -> ", key);
+        if (table == pnrs)
+            print_list(cfuhash_get(table, key));
+        else if (table == timers)
+            printf("%s", (char*)cfuhash_get(table, key));
+        printf("%s", "\n");
+	}
+    puts("}\n");
+}
+
+/* void print_pnrs() {
     size_t num_keys = 0;
     void **keys = NULL;
     char *key;
@@ -157,13 +190,13 @@ void print_pnrs() {
         print_list(cfuhash_get(pnrs, key));
         printf("%s", "\n");
 	}
-    puts("\n}");    
+    puts("}");    
 }
 
 void print_timers() {
     size_t num_keys = 0;
     void **keys = NULL;
-    timer_t key;
+    char *key;
     size_t i = 0;
 
     keys = cfuhash_keys(timers, &num_keys, 1);
@@ -171,7 +204,9 @@ void print_timers() {
     puts("{");
     for (i = 0; i < num_keys; i++) {
         key = keys[i];
-        printf("\t%s -> %s\n", (char*)key, (char*)cfuhash_get(timers, key));
+        printf("\t%s -> ", key);
+        printf("%s", (char*)cfuhash_get(timers, key));
+        printf("%s", "\n");
 	}
-    puts("}");    
-}
+    puts("}");
+} */

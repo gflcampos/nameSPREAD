@@ -23,7 +23,7 @@ void push(node_t * head, char *val) {
         current = current->next;
     }
 
-    /* now we can add a new variable */
+    // add the new variable
     current->next = malloc(sizeof(node_t));
     current->next->val = val;
     current->next->next = NULL;

@@ -20,8 +20,6 @@ struct request_args {
 };
 
 void *watch_routes() {
-    //sleep(5);
-    //cfuhash_pretty_print(pnrs, stdout);
     FILE *in;
     extern FILE *popen();
     char buf[IP_MON_ROUTE_LEN];
@@ -57,8 +55,6 @@ void *watch_routes() {
                     
                     // request name from next hop in new thread
                     pthread_create(&tid, NULL, request_name, (void*) &args);
-                    asprintf(&msg, "*** Requesting name for %s...\n", dst_addr);
-                    log_msg(msg, own_addr);
 
                 } else { // name for dst_addr is cached
                     asprintf(&msg, "*** A name for host %s is already cached: %s\n", dst_addr, name);
@@ -79,35 +75,38 @@ void *request_name(void *arguments) {
     struct request_args *args = (struct request_args *)arguments;
     char *dst_addr = args->dst_addr, *next_hop_addr = "127.0.0.1";//(char*) args->next_hop;
     int s;
-    char res_buf[MAX_NAME_LEN];
+    char send_buf[NREQ_MAX_LEN];//, recv_buf[NREP_MAX_LEN];
     struct sockaddr_in next_hop;
     socklen_t addr_size;
 
     s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    
-    memset((char *)&next_hop, 0, sizeof(next_hop));
+
+    memset((char *) &next_hop, 0, sizeof(next_hop));
     next_hop.sin_family = AF_INET;
     next_hop.sin_port = htons(NREQ_RESPONDER_PORT);
     if (inet_aton(next_hop_addr, &next_hop.sin_addr) == 0) {
-        perror("Invalid next hop address.");
+        perror("Invalid next hop address");
     }
 
     addr_size = sizeof next_hop;
-    
-    sendto(s, dst_addr, INET_ADDRSTRLEN, 0, (struct sockaddr *) &next_hop, addr_size);
-    memset(res_buf,'\0', MAX_NAME_LEN); // clear the buffer (?)
-    recvfrom(s, res_buf, MAX_NAME_LEN, 0, (struct sockaddr *) &next_hop, &addr_size);
+    sprintf(send_buf, "NREQ %s", dst_addr);
+    sendto(s, send_buf, NREQ_MAX_LEN, 0, (struct sockaddr *) &next_hop, addr_size);
 
-    asprintf(&msg, "*** Received name for host %s: %s\n", dst_addr, res_buf);
+    asprintf(&msg, "*** Requesting name for %s...\n", dst_addr);
+    log_msg(msg, own_addr);
+/*     // TODO: maybe stop here and receive response on NREQ responder
+    memset(recv_buf,'\0', NREP_MAX_LEN); // clear the buffer (?)
+    recvfrom(s, recv_buf, NREP_MAX_LEN, 0, (struct sockaddr *) &next_hop, &addr_size);
+
+    asprintf(&msg, "*** Received name for host %s: %s\n", dst_addr, recv_buf);
     log_msg(msg, own_addr);
 
     // cache received name
     FILE *out = fopen("/etc/hosts", "a");
-    fprintf(out, "%s\t%s\n", dst_addr, res_buf);
+    fprintf(out, "%s\t%s\n", dst_addr, recv_buf);
     fclose(out);
-    puts("HELLO5");
 
-    // TODO: send name to interested requesters, if any <<<<<<<<<<<<<<<<<<<<<<<<
+    // TODO: send name to interested requesters, if any */
 }
 
 /*

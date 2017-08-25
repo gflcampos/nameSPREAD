@@ -22,7 +22,7 @@ void timeout_handler(int sig_num, siginfo_t *si, void *uc) {
         timer_ids[*timer_id - 1] = 0;
         return;
     }
-    printf("*** Timeout on NREQ for host %s (timer ID: %s)\n", dst_addr, timer_id_str);    
+    //printf("*** Timeout on NREQ for host %s (timer ID: %s)\n", dst_addr, timer_id_str);    
     asprintf(&msg, "*** Timeout on NREQ for host %s (timer ID: %s)\n", dst_addr, timer_id_str);
     log_msg(msg, own_addr);
 
@@ -30,13 +30,13 @@ void timeout_handler(int sig_num, siginfo_t *si, void *uc) {
     // they don't have to wait until THEIR timer expires
 
     // remove entries in the Timers and PNRs tables
-    print_hash_table(timers);
-    print_hash_table(pnrs);
+    //print_hash_table(timers);
+    //print_hash_table(pnrs);
     cfuhash_delete(timers, timer_id_str);
     timer_ids[*timer_id - 1] = 0;
     cfuhash_delete(pnrs, dst_addr);
-    print_hash_table(timers);
-    print_hash_table(pnrs);
+    //print_hash_table(timers);
+    //print_hash_table(pnrs);
 }
 
 void make_timer(timer_t *timer_obj, int *timer_id, int timeout_secs) {

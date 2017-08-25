@@ -48,7 +48,7 @@ void *listen_for_nreqs() {
             asprintf(&msg, "### NREQ: %s wants name for %s\n", requester_addr, dst_addr);
             log_msg(msg, own_addr);
     
-            name = get_name_by_addr("127.0.0.1");//dst_addr);
+            name = get_name_by_addr(dst_addr);//"127.0.0.1");
     
             if (name) { // is the name cached?
                 //strcpy(send_buf, name);
@@ -99,9 +99,11 @@ void *listen_for_nreqs() {
 }
 
 void cache_name(char *dst_addr, char *name) {
-    FILE *hosts = fopen("/etc/hosts", "a");
-    fprintf(hosts, "%s\t%s\n", dst_addr, name);
-    fclose(hosts);
+    if (!get_name_by_addr(dst_addr)) {
+        FILE *hosts = fopen("/etc/hosts", "a");
+        fprintf(hosts, "%s\t%s\n", dst_addr, name);
+        fclose(hosts);
+    }
 }
 
 void respond_to_pnrs(char *dst_addr, char *nrep_msg) {
@@ -118,6 +120,8 @@ void respond_to_pnrs(char *dst_addr, char *nrep_msg) {
 
     while (requesters_list != NULL) {
         requester_addr = requesters_list->val;
+        asprintf(&msg, "####### %s is a requester waiting\n", requester_addr);
+        log_msg(msg, own_addr);
         requesters_list = requesters_list->next;
 
         if (requester_addr == NULL) // was local request

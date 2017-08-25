@@ -90,14 +90,16 @@ def topology():
     os.makedirs(logPath)
 
     for i in range(1, nStations+1):
-        hostsFile = open("%s/.hosts-sta%d" % (hostsFilePath, i), "w")
-        hostsCmd = "mount --bind %s/.hosts-sta%d /etc/hosts" % (hostsFilePath, i)
+        hostsFile = open("%s/hosts-sta%d" % (hostsFilePath, i), "w")
+        addr = net.stations[i-1].params['ip'][0].split("/")[0]
+        hostsFile.write("%s\tsta%d\n" % (addr, i))
+        hostsCmd = "mount --bind %s/hosts-sta%d /etc/hosts" % (hostsFilePath, i)
         print("\t" + hostsCmd)
         net.stations[i-1].cmd(hostsCmd)
 
-        hostnameFile = open("%s/.hostname-sta%d" % (hostsFilePath, i), "w")
+        hostnameFile = open("%s/hostname-sta%d" % (hostsFilePath, i), "w")
         hostnameFile.write("sta%d\n" % i)
-        hostnameCmd = "mount --bind %s/.hostname-sta%d /etc/hostname" % (hostsFilePath, i)
+        hostnameCmd = "mount --bind %s/hostname-sta%d /etc/hostname" % (hostsFilePath, i)
         print("\t" + hostnameCmd)
         net.stations[i-1].cmd(hostnameCmd)
 
@@ -113,7 +115,7 @@ def topology():
         neAddrMask = net.stations[i-1].params['ip'][0]
         maskIndex = len(neAddrMask) - neAddrMask.index('/')
         neAddr = neAddrMask[:-maskIndex]
-        neCmd = "./namespread %s &" % neAddr
+        neCmd = "./src/namespread.o %s &" % neAddr
         print("\t" + neCmd)
         net.stations[i-1].cmd(neCmd)
 

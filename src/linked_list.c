@@ -8,7 +8,7 @@
 } node_t; */
 
 void print_list(node_t *head) {
-    node_t * current = head;
+    node_t *current = head;
     printf("%s", "[");
     while (current != NULL) {
         printf("%s%s", current->val, current->next == NULL ? "]" : ", ");
@@ -17,8 +17,8 @@ void print_list(node_t *head) {
 }
 
 // add to the end of the list
-void push(node_t * head, char *val) {
-    node_t * current = head;
+void push(node_t *head, char *val) {
+    node_t *current = head;
     while (current->next != NULL) {
         current = current->next;
     }
@@ -30,7 +30,7 @@ void push(node_t * head, char *val) {
 }
 
 // add to the beginning of the list
-void push_first(node_t ** head, char *val) {
+void push_first(node_t **head, char *val) {
     node_t * new_node;
     new_node = malloc(sizeof(node_t));
 

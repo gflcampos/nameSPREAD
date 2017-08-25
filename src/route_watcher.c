@@ -7,7 +7,8 @@
 //#include "common.h"
 //#include "cfuhash.h"
 
-void *request_name();
+//void *request_name(void *arguments);
+void request_name(char *dst_addr, char *next_hop_addr);
 void print_hash_table(cfuhash_table_t *table);
 /* void print_pnrs();
 void print_timers(); */
@@ -44,17 +45,18 @@ void *watch_routes() {
                 
                 name = get_name_by_addr(dst_addr);
                 if (!name) { // name for dst_addr is not known
-                    pthread_t tid;
+                    //pthread_t tid;
                     struct request_args args;
                     args.next_hop = next_hop;
                     args.dst_addr = dst_addr;
 
                     // register the request in PNRs table
                     register_nreq(dst_addr, NULL);
-                    print_hash_table(pnrs);
+                    //print_hash_table(pnrs);
                     
                     // request name from next hop in new thread
-                    pthread_create(&tid, NULL, request_name, (void*) &args);
+                    //pthread_create(&tid, NULL, request_name, (void*) &args);
+                    request_name(dst_addr, next_hop);
 
                 } else { // name for dst_addr is cached
                     asprintf(&msg, "*** A name for host %s is already cached: %s\n", dst_addr, name);
@@ -71,9 +73,10 @@ void *watch_routes() {
     pclose(in);
 }
 
-void *request_name(void *arguments) {
-    struct request_args *args = (struct request_args *)arguments;
-    char *dst_addr = args->dst_addr, *next_hop_addr = "127.0.0.1";//(char*) args->next_hop;
+//void *request_name(void *arguments) {
+void request_name(char *dst_addr, char *next_hop_addr) {
+    //struct request_args *args = (struct request_args *)arguments;
+    //char *dst_addr = args->dst_addr, *next_hop_addr = (char*) args->next_hop;//"127.0.0.1";
     int s;
     char send_buf[NREQ_MAX_LEN];//, recv_buf[NREP_MAX_LEN];
     struct sockaddr_in next_hop;
@@ -121,12 +124,6 @@ void register_nreq(char *dst_addr, char *requester_addr) {
     if ((requesters_list = cfuhash_get(pnrs, dst_addr)) != NULL) {
         push(requesters_list, requester_addr);
     } else {
-
-        if (requester_addr != NULL) {
-            asprintf(&msg, "[FIX THIS] ### New PNR for %s (from %s) created but NREQ was not sent!\n", dst_addr, requester_addr);
-            log_msg(msg, own_addr);
-        }
-
         // create new list of requesters for dst_addr
         requesters_list = new_linked_list(requester_addr);
         // associate dst_addr to requesters_list in PNRs table
@@ -142,13 +139,18 @@ void register_nreq(char *dst_addr, char *requester_addr) {
         // associate timer_id (as string) to dst_addr in timers table
         sprintf(timer_id_str, "%d", *timer_id_index);
         cfuhash_put(timers, timer_id_str, strdup(dst_addr));
-        printf("*** Started timer %d for NREQ of %s\n", *timer_id_index, dst_addr);
+        //printf("*** Started timer %d for NREQ of %s\n", *timer_id_index, dst_addr);
         asprintf(&msg, "*** Started timer %d for NREQ of %s\n", *timer_id_index, dst_addr);
         log_msg(msg, own_addr);
         //printf("%zu timer entries\n", cfuhash_num_entries(timers));
-        print_hash_table(timers);
+        //print_hash_table(timers);
+
+        if (requester_addr != NULL) { // this happens when a node is asked for a name of a dst to which the node does not yet have a route
+            asprintf(&msg, "[FIX THIS] ### New PNR for %s (from %s) created but NREQ was not sent!\n", dst_addr, requester_addr);
+            log_msg(msg, own_addr);
+        }
     }
-    printf("*** Added %s as a requester for %s in PNRs table\n", requester_addr, dst_addr);
+    //printf("*** Added %s as a requester for %s in PNRs table\n", requester_addr, dst_addr);
     asprintf(&msg, "*** Added %s as a requester for %s in PNRs table\n", requester_addr, dst_addr);
     log_msg(msg, own_addr);
 }

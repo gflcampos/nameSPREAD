@@ -19,7 +19,7 @@ int n_timers = 0;
 
 int main(int argc, char *argv[]) {
     own_addr = argv[1];
-    pthread_t tid1, tid2;
+    pthread_t tid1, tid2, tid3;
 
     pnrs = cfuhash_new(30);
     timers = cfuhash_new(30);
@@ -28,9 +28,11 @@ int main(int argc, char *argv[]) {
     
     pthread_create(&tid1, NULL, listen_for_nreqs, NULL);
     pthread_create(&tid2, NULL, watch_routes, NULL);
+    //pthread_create(&tid3, NULL, log_pnrs, NULL);
 
     pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
+    //pthread_join(tid3, NULL);    
 }
 
 char *get_hostname() {

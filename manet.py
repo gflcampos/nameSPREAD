@@ -126,6 +126,7 @@ def topology():
     CLI(net)
 
     print "*** Stopping network"
+    os.system("ps aux | grep olsrd2 | grep -v grep | awk '{print($2)}' | xargs sudo kill -9")
     net.stop()
     shutil.rmtree(mininetTmpDir)
     os.system("mn -c")

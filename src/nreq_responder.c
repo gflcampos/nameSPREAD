@@ -62,7 +62,7 @@ void *listen_for_nreqs() {
             } else {
                 // if name is not cached, then a PNR for that name must already exist in PNRs table
                 // so, add requester_addr to the list of requesters of that PNR
-                register_nreq(dst_addr, requester_addr);
+                register_nreq(dst_addr, strdup(requester_addr));
                 // when available, the response will be sent. If a timeout occurs, 
                 // then a timeout notification will be sent instead (by the timeout handler function)
             }
@@ -120,8 +120,6 @@ void respond_to_pnrs(char *dst_addr, char *nrep_msg) {
 
     while (requesters_list != NULL) {
         requester_addr = requesters_list->val;
-        asprintf(&msg, "####### %s is a requester waiting\n", requester_addr);
-        log_msg(msg, own_addr);
         requesters_list = requesters_list->next;
 
         if (requester_addr == NULL) // was local request
@@ -132,7 +130,7 @@ void respond_to_pnrs(char *dst_addr, char *nrep_msg) {
         }
         sendto(s, nrep_msg, NREP_MAX_LEN, 0, (struct sockaddr *) &requester, addr_size);
         
-        asprintf(&msg, "### Sent name '%s' to %s\n", strrchr(nrep_msg, ' ') + 1, requester_addr);
+        asprintf(&msg, "####### Sent name '%s' to waiting requester %s\n", strrchr(nrep_msg, ' ') + 1, requester_addr);
         log_msg(msg, own_addr);
     } 
 }

@@ -13,7 +13,7 @@ Y_POS=0
 X_OFFSET=260
 Y_OFFSET=320
 
-for f in $HOSTS_PATH/hosts*
+for f in `ls -v $HOSTS_PATH/hosts*`
 do
     gnome-terminal --geometry $WINDOW_HEIGHT$DELIMITER$WINDOW_WIDTH+$X_POS+$Y_POS -x bash -c "watch tail $f"
     X_POS=$(( $X_POS + X_OFFSET ))

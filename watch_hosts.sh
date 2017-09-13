@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# close windows
+if [ "$1" == "clean" ]; then
+    ps aux | grep 'watch tail' | grep -v grep | awk '{print $2}' | xargs kill -9
+    exit 0
+fi
+
 MN_PATH=/tmp/mininet-wifi
 HOSTS_PATH=$MN_PATH/hosts
 LOG_PATH=$MN_PATH/log
@@ -11,14 +17,14 @@ N_WINDOWS=0
 X_POS=0
 Y_POS=0
 X_OFFSET=260
-Y_OFFSET=320
+Y_OFFSET=280
 
 for f in `ls -v $HOSTS_PATH/hosts*`
 do
     gnome-terminal --geometry $WINDOW_HEIGHT$DELIMITER$WINDOW_WIDTH+$X_POS+$Y_POS -x bash -c "watch tail $f"
     X_POS=$(( $X_POS + X_OFFSET ))
     (( N_WINDOWS++ ))
-    if [ $N_WINDOWS -eq 5 ]; then
+    if (( $N_WINDOWS % 5 == 0 )); then
         X_POS=0
         Y_POS=$(( $Y_POS + Y_OFFSET ))
     fi

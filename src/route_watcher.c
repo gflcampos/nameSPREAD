@@ -9,6 +9,8 @@
 
 //void *request_name(void *arguments);
 void request_name(char *dst_addr, char *next_hop_addr);
+void copy_file_content(char *from_path, char *to_path);
+void remove_name(char *addr);
 void print_hash_table(cfuhash_table_t *table);
 /* void print_pnrs();
 void print_timers(); */
@@ -67,10 +69,85 @@ void *watch_routes() {
                 dst_addr = strtok(NULL, " ");
                 asprintf(&msg, "*** Route removed: %s", route_copy);
                 log_msg(msg, own_addr);
+
+                remove_name(dst_addr);
             }
         }
     }
     pclose(in);
+}
+
+void remove_name(char *addr) {
+    FILE *in, *out;
+    extern FILE *popen();
+    char line[100], line_copy[100];
+    char *cached_addr;
+    char *hostname = get_hostname();
+    char *hosts_file_path, *new_hosts_file_path;
+
+    asprintf(&hosts_file_path, "%s/hosts-%s", HOSTS_FILES_PATH, hostname);    
+    asprintf(&new_hosts_file_path, "%s/hosts-%s.aux", HOSTS_FILES_PATH, hostname);
+
+    asprintf(&msg, "*** Removing name for host %s\n", addr);
+    log_msg(msg, own_addr);
+
+    if (!(in = popen("cat /etc/hosts", "r"))) {
+        asprintf(&msg, "%s", "*** ERROR removing name: could read hosts file\n");
+        log_msg(msg, own_addr);
+    }
+    
+    if (!(out = fopen(new_hosts_file_path, "w"))) {
+        asprintf(&msg, "%s", "*** ERROR removing name: could not create new hosts file\n");
+        log_msg(msg, own_addr);
+    }
+
+    while (fgets(line, sizeof(line), in) != NULL) {
+        strcpy(line_copy, line);
+        cached_addr = strtok(line, "\t");
+
+        if (strcmp(cached_addr, addr) != 0) {
+            fprintf(out, "%s", line_copy);
+        }
+    }
+
+    fclose(in);
+    fclose(out);
+
+    copy_file_content(new_hosts_file_path, hosts_file_path);
+
+    // TODO: check if /etc/hosts is beibg written to
+    //char *cmd;
+    //asprintf(&cmd, "mv -f %s %s", new_hosts_file_path, hosts_file_path);
+    //system(cmd);
+
+    //free(cmd);
+    free(hosts_file_path);
+    free(new_hosts_file_path);
+    asprintf(&msg, "%s", "*** WROTE\n");
+    log_msg(msg, own_addr);
+}
+
+// copy file content (overwriting)
+void copy_file_content(char *from_path, char *to_path) {
+    FILE *in, *out;
+    char line[100];
+
+    if (!(in = fopen(from_path, "r"))) {
+        asprintf(&msg, "*** ERROR: could not open file %s for reading\n", from_path);
+        log_msg(msg, own_addr);
+    }
+
+    if (!(out = fopen(to_path, "w"))) {
+        asprintf(&msg, "*** ERROR: could not open file %s for writing\n", to_path);
+        log_msg(msg, own_addr);
+    }
+
+    while (fgets(line, sizeof(line), in) != NULL) {
+        fprintf(out, "%s", line);
+    }
+
+    fclose(in);
+    fclose(out);
 }
 
 //void *request_name(void *arguments) {

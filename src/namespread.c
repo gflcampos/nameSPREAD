@@ -50,7 +50,7 @@ char *get_hostname() {
     return strdup(hostname);
 }
 
-char *get_name_by_addr(char *address) { //10.0.0.10
+char *get_name_by_addr(char *addr) { //10.0.0.10
     FILE *in;
     extern FILE *popen();
     char buff[512];
@@ -64,7 +64,7 @@ char *get_name_by_addr(char *address) { //10.0.0.10
         //log_msg(msg, own_addr);
         cached_addr = strtok(buff, "\t");
 
-        if (strcmp(cached_addr, address) == 0) {
+        if (strcmp(cached_addr, addr) == 0) {
             //asprintf(&msg, "2%s\n", buff);
             //log_msg(msg, own_addr);
             cached_name = strtok(NULL,"\t");

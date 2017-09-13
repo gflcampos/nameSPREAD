@@ -10,9 +10,10 @@
 #define NAME_MAX_LEN 32
 #define NREQ_MAX_LEN 5 + ADDR_MAX_STRLEN  // "NREQ xxx.xxx.xxx.xxx"
 #define NREP_MAX_LEN NREQ_MAX_LEN + NAME_MAX_LEN // "NREP xxx.xxx.xxx.xxx name"
-
-#define NREQ_TIMEOUT_SECS 10
+#define NREQ_TIMEOUT_SECS 1
 #define N_TIMERS 100
+
+#define HOSTS_FILES_PATH "/tmp/mininet-wifi/hosts"
 
 extern char *own_addr;
 extern cfuhash_table_t *pnrs, *timers;

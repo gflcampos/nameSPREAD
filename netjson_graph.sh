@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # remove previous log file
-if [ -f ~/Dropbox/FCUP/dissertacao/mininet-wifi/telnetlog ]; then
-    rm ~/Dropbox/FCUP/dissertacao/mininet-wifi/telnetlog
+if [ -f ~/Dropbox/FCUP/dissertacao/namespread/telnetlog ]; then
+    rm ~/Dropbox/FCUP/dissertacao/namespread/telnetlog
 fi
 
 # run 'netjsoninfo graph' in telnet session; output is saved in telnetlog file

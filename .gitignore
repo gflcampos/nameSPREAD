@@ -55,3 +55,7 @@ dkms.conf
 .vscode
 
 others
+scenarios
+manet_cp.py
+go.sh
+*~

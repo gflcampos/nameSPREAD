@@ -58,4 +58,5 @@ others
 scenarios
 manet_cp.py
 go.sh
+hash_table.c
 *~

@@ -42,52 +42,71 @@ void *listen_for_nreqs() {
         
         // check if message is NREQ or NREP
         if (strstr(recv_buf, "NREQ")) {
+            total_nreps_reveived++;
             strtok(recv_buf, " ");
             dst_addr = strtok(NULL, " ");
 
-            asprintf(&msg, "### NREQ: %s wants name for %s\n", requester_addr, dst_addr);
+            asprintf(&msg, "[<-NREQ] %s wants name for %s\n", requester_addr, dst_addr);
             log_msg(msg, own_addr);
     
             name = get_name_by_addr(dst_addr);//"127.0.0.1");
     
             if (name) { // is the name cached?
                 //strcpy(send_buf, name);
+                //int nrep_size = strlen("NREP  ") + strlen(dst_addr) + strlen(name) + 1;
                 sprintf(send_buf, "NREP %s %s", dst_addr, name);
                 //printf("------%s", send_buf);
                 requester.sin_port = htons(NREQ_RESPONDER_PORT); // chage the port so that this NREP is received by the NREQ Responder on the requester
-                sendto(s, send_buf, NREP_MAX_LEN, 0, (struct sockaddr*) &requester, addr_size);
-    
-                asprintf(&msg, "### Sent name %s to %s\n", name, requester_addr);
+                sendto(s, send_buf, strlen(send_buf) + 1, 0, (struct sockaddr*) &requester, addr_size);
+                
+                total_nreps++;
+                asprintf(&msg, "[NREP->] Sent name %s to %s\n", name, requester_addr);
                 log_msg(msg, own_addr);
             } else {
                 // if name is not cached, then a PNR for that name must already exist in PNRs table
                 // so, add requester_addr to the list of requesters of that PNR
-                register_nreq(dst_addr, strdup(requester_addr));
-                // when available, the response will be sent. If a timeout occurs, 
-                // then a timeout notification will be sent instead (by the timeout handler function)
+                register_nreq(dst_addr, "", strdup(requester_addr));
+
+                // ack nreq
+                /* sprintf(send_buf, "ACK %s", dst_addr);
+                requester.sin_port = htons(NREQ_RESPONDER_PORT);
+                sendto(s, send_buf, ACK_MAX_LEN, 0, (struct sockaddr*) &requester, addr_size);
+                n_acks++;
+
+                asprintf(&msg, "### Sent ACK fot %s to %s\n", dst_addr, requester_addr);
+                log_msg(msg, own_addr); */
             }
         } else if (strstr(recv_buf, "NREP")) {
-            char nrep_msg_copy[sizeof recv_buf];
+            char nrep_msg_copy[strlen(recv_buf)];
             strcpy(nrep_msg_copy, recv_buf);
 
             strtok(recv_buf, " ");
             dst_addr = strtok(NULL, " ");
             name = strtok(NULL, " ");
 
-            // disable timer for dst_addr
-            // (currently, timer still expires and is then removed from timers table)
+            if (get_name_by_addr(dst_addr) == NULL) {
+                // disable timer for dst_addr
+                // (currently, timer still expires and is then removed from timers table)
 
-            asprintf(&msg, "*** NREP: received name '%s' for host %s\n", name, dst_addr);
+                asprintf(&msg, "[<-NREP] received name '%s' for host %s\n", name, dst_addr);
+                log_msg(msg, own_addr);
+
+                // cache the name and send it to the interested requesters
+                cache_name(dst_addr, name);
+                respond_to_pnrs(dst_addr, nrep_msg_copy);
+
+                // remove entry from PNRs table
+                cfuhash_delete(pnrs, dst_addr);
+            }
+        } /* else if (strstr(recv_buf, "ACK")) {
+            strtok(recv_buf, " ");
+            dst_addr = strtok(NULL, " ");
+
+            push(acks, strdup(dst_addr));
+            asprintf(&msg, "### Received ACK for %s from %s\n", dst_addr, requester_addr);
             log_msg(msg, own_addr);
-
-            // cache the name and send it to the interested requesters
-            cache_name(dst_addr, name);
-            respond_to_pnrs(dst_addr, nrep_msg_copy);
-
-            // remove entry from PNRs table
-            cfuhash_delete(pnrs, dst_addr);
-        } else {
-            asprintf(&msg, "### Received message with unrecognized format: '%s'\n", recv_buf);
+        } */ else {
+            asprintf(&msg, "[WARNING] Received message from %s with unrecognized format: '%s'\n", requester_addr, recv_buf);
             log_msg(msg, own_addr);
         }
 
@@ -103,7 +122,10 @@ void cache_name(char *dst_addr, char *name) {
         FILE *hosts = fopen("/etc/hosts", "a");
         fprintf(hosts, "%s\t%s\n", dst_addr, name);
         fclose(hosts);
+        total_cached_names++;
     }
+    asprintf(&msg, "[NAME+] Cached name for host %s\n", dst_addr);
+    log_msg(msg, own_addr);
 }
 
 void respond_to_pnrs(char *dst_addr, char *nrep_msg) {
@@ -126,11 +148,15 @@ void respond_to_pnrs(char *dst_addr, char *nrep_msg) {
             continue;
 
         if (inet_aton(requester_addr, &requester.sin_addr) == 0) {
+            asprintf(&msg, "[ ERROR ] %s\n", "Invalid requester addr address");
+            log_msg(msg, own_addr);
             perror("Invalid requester addr address");
         }
-        sendto(s, nrep_msg, NREP_MAX_LEN, 0, (struct sockaddr *) &requester, addr_size);
         
-        asprintf(&msg, "####### Sent name '%s' to waiting requester %s\n", strrchr(nrep_msg, ' ') + 1, requester_addr);
+        sendto(s, nrep_msg, strlen(nrep_msg) + 1, 0, (struct sockaddr *) &requester, addr_size);
+        
+        total_nreps++;
+        asprintf(&msg, "[NREP->***] Sent name '%s' to waiting requester %s\n", strrchr(nrep_msg, ' ') + 1, requester_addr);
         log_msg(msg, own_addr);
     } 
 }

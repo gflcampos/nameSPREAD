@@ -5,8 +5,9 @@
 #include <sys/syscall.h>
 
 char *msg;
+char *route_exists(char *dest_addr);
 
-// get dst_addr associated with tid on timers has table
+// get dst_addr associated with tid on timers hash table
 // using dst_addr, get list of interested hosts from pnrs
 // notify each host in the list that a timeout has occurred (retry?)
 void timeout_handler(int sig_num, siginfo_t *si, void *uc) {
@@ -17,26 +18,91 @@ void timeout_handler(int sig_num, siginfo_t *si, void *uc) {
     sprintf(timer_id_str, "%d", *timer_id);
     dst_addr = (char *)cfuhash_get(timers, timer_id_str);
 
-    if (!cfuhash_get(pnrs, dst_addr)) { // NREP already received
-        cfuhash_delete(timers, timer_id_str);
-        timer_ids[*timer_id - 1] = 0;
-        return;
-    }
-    //printf("*** Timeout on NREQ for host %s (timer ID: %s)\n", dst_addr, timer_id_str);    
-    asprintf(&msg, "*** Timeout on NREQ for host %s (timer ID: %s)\n", dst_addr, timer_id_str);
+    //printf("*** Timeout on NREQ for host %s (timer ID: %s)\n", dst_addr, timer_id_str);
+    asprintf(&msg, "[TIMEOUT] Timeout on NREQ for host %s (timer ID: %s)\n", dst_addr, timer_id_str);
     log_msg(msg, own_addr);
 
-    // TODO (improvement): notify requesters of timeout so that 
-    // they don't have to wait until THEIR timer expires
-
-    // remove entries in the Timers and PNRs tables
+    // remove entries in the Timers table
     //print_hash_table(timers);
     //print_hash_table(pnrs);
     cfuhash_delete(timers, timer_id_str);
     timer_ids[*timer_id - 1] = 0;
-    cfuhash_delete(pnrs, dst_addr);
+    //cfuhash_delete(pnrs, dst_addr);
     //print_hash_table(timers);
     //print_hash_table(pnrs);
+
+    /*
+    NREP already received or route has been lost
+    or
+    NREQ has already been acked
+    */
+    if (!cfuhash_get(pnrs, dst_addr)) { // || exists_in_list(acks, dst_addr) == 1) {
+        cfuhash_delete(pnrs, dst_addr);
+        asprintf(&msg, "[TIMER-] Not reseting timer for %s\n", dst_addr);
+        log_msg(msg, own_addr);
+        return;
+    }
+
+    char *next_hop;
+    asprintf(&msg, "[ TIMEOUT ] %s\n", "1");
+    log_msg(msg, own_addr);
+
+    if ((next_hop = route_exists(strdup(dst_addr))) != NULL) {
+        asprintf(&msg, "[ TIMEOUT ] %s\n", "5");
+        log_msg(msg, own_addr);
+        // create new timer
+        timer_t timer_obj;
+        int *timer_id_index = next_free_timer_id();
+        char timer_id_str[12];
+        //printf("~~~new timer_id=%d\n", *timer_id_index);
+        make_timer(&timer_obj, &(timer_ids[*timer_id_index - 1]), NREQ_TIMEOUT_SECS);
+        // associate timer_id (as string) to dst_addr in timers table
+        sprintf(timer_id_str, "%d", *timer_id_index);
+        cfuhash_put(timers, timer_id_str, strdup(dst_addr));
+
+        //printf("*** Started timer %d for NREQ of %s\n", *timer_id_index, dst_addr);
+        asprintf(&msg, "[TIMER++] Reset timer %d for NREQ of %s\n", *timer_id_index, dst_addr);
+        log_msg(msg, own_addr);
+
+        request_name(dst_addr, next_hop);
+    }
+}
+
+// if route to dst_addr exists, returns the next_hop
+char *route_exists(char *dst_addr) {
+    FILE *in;
+    asprintf(&msg, "[ TIMEOUT ] %s\n", "2");
+    log_msg(msg, own_addr);
+    while (!(in = popen("route -n | tr -s ' '", "r"))) {
+        asprintf(&msg, "[WAIT] %s\n", "Trying popen(route -n | tr -s ' ')...");
+        log_msg(msg, own_addr);
+    }
+    char buf[2*ADDR_MAX_STRLEN + 1];
+    char buf_copy[sizeof buf];
+    char *route_dst_addr, *route_next_hop;
+    asprintf(&msg, "[ TIMEOUT ] %s\n", "3");
+    log_msg(msg, own_addr);
+    while (fgets(buf, sizeof(buf), in)!=NULL) {
+        strcpy(buf_copy, buf);
+
+        route_dst_addr = strtok(buf_copy, " ");
+
+        asprintf(&msg, "[ TIMEOUT ] 3.1 dst:%s\n", route_dst_addr);
+        log_msg(msg, own_addr);
+
+        if (strcmp(route_dst_addr, dst_addr) == 0) {
+            route_next_hop = strdup(strtok(NULL, " "));
+            asprintf(&msg, "[ TIMEOUT ] 3.1 dst:%s\n", route_dst_addr);
+            log_msg(msg, own_addr);
+            pclose(in);
+            return route_next_hop;
+        }
+        //buf_copy[strlen(buf_copy) - 1] = '\0'; // remove trailing newline        
+    }
+    asprintf(&msg, "[ TIMEOUT ] %s\n", "4");
+    log_msg(msg, own_addr);
+    pclose(in);
+    return NULL;
 }
 
 void make_timer(timer_t *timer_obj, int *timer_id, int timeout_secs) {
@@ -51,6 +117,8 @@ void make_timer(timer_t *timer_obj, int *timer_id, int timeout_secs) {
     sa.sa_sigaction = timeout_handler;
     sigemptyset(&sa.sa_mask);
     if (sigaction(sig_num, &sa, NULL) == -1) {
+        asprintf(&msg, "[ ERROR ] %s\n", "Failed to setup signal handling");
+        log_msg(msg, own_addr);
         perror("Failed to setup signal handling");
         return;
     }

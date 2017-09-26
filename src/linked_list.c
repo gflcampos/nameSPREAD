@@ -6,6 +6,7 @@
     char* val;
     struct node *next;
 } node_t; */
+char *msg;
 
 void print_list(node_t *head) {
     node_t *current = head;
@@ -14,6 +15,26 @@ void print_list(node_t *head) {
         printf("%s%s", current->val, current->next == NULL ? "]" : ", ");
         current = current->next;
     }
+}
+
+int exists_in_list(node_t *head, char *elem) {
+    node_t *current = head;
+    asprintf(&msg, "»»»»»»» checking list %d\n", 1);
+    log_msg(msg, own_addr);
+    while (current != NULL) {
+        asprintf(&msg, "»»»»»»» checking list %d %s %s\n", 2, current->val, elem);
+        log_msg(msg, own_addr);
+        if (current->val != NULL && elem != NULL && strcmp(current->val, elem) == 0)
+            return 1;
+        asprintf(&msg, "»»»»»»» checking list %d\n", 21);
+        log_msg(msg, own_addr);
+        current = current->next;
+        asprintf(&msg, "»»»»»»» checking list %d\n", 22);
+        log_msg(msg, own_addr);
+    }
+    asprintf(&msg, "»»»»»»» checking list %s\n", "done!!!!");
+    log_msg(msg, own_addr);
+    return 0;
 }
 
 // add to the end of the list
